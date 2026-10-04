@@ -1707,6 +1707,50 @@ localStorage['travelFootprints']
       animation: bottleBoyBob 3.4s ease-in-out infinite;
     }
 
+    /* 瓶边小伙伴的说话气泡 */
+    .boy-bubble {
+      position: absolute;
+      left: 4px;
+      bottom: calc(100% + 10px);
+      width: max-content;
+      max-width: min(238px, 52vw);
+      padding: 9px 13px;
+      border-radius: 15px;
+      background: rgba(255,253,247,.96);
+      color: #6a4a38;
+      font-size: 12.5px;
+      line-height: 1.55;
+      letter-spacing: .01em;
+      text-align: left;
+      box-shadow: 0 10px 26px rgba(0,0,0,.3), inset 0 0 0 1px rgba(255,255,255,.9);
+      transform-origin: 22px 100%;
+      transform: translateY(8px) scale(.86);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity .32s ease, transform .36s cubic-bezier(.2,1.45,.4,1), visibility .36s;
+      z-index: 2;
+    }
+    .boy-bubble.show {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+    }
+    .boy-bubble::after {
+      content: "";
+      position: absolute;
+      left: 18px;
+      bottom: -6px;
+      width: 13px;
+      height: 13px;
+      background: rgba(255,253,247,.96);
+      border-radius: 3px;
+      transform: rotate(45deg);
+    }
+    @media (max-width: 560px) {
+      .boy-bubble { max-width: 56vw; font-size: 12px; padding: 8px 11px; }
+    }
+
     .bottle-boy .chibi-img {
       width: 100%;
       height: auto;
@@ -2656,6 +2700,9 @@ localStorage['travelFootprints']
     <!-- 星星瓶 -->
     <div class="star-bottle-zone" id="starBottleZone">
       <div class="bottle-boy" id="bottleBoy"></div>
+
+      <!-- 小伙伴的悄悄话 -->
+      <div class="boy-bubble" id="boyBubble"></div>
 
       <div class="star-bottle">
         <div class="bottle-cork"></div>
@@ -4711,6 +4758,9 @@ function openBottleShow() {
   if (letter) letter.classList.remove("show");
   const cork = document.querySelector(".bs-cork");
   if (cork) cork.classList.remove("pop");
+
+  const bubbleEl = document.getElementById("boyBubble");
+  if (bubbleEl) bubbleEl.classList.remove("show");
 
   el.classList.add("show");
   bsAfter(() => el.classList.add("open"), 60);
@@ -8022,6 +8072,64 @@ function renderStarBottle() {
   const zone = document.getElementById("starBottleZone");
   if (zone) zone.classList.toggle("ready", count >= 5);
 }
+
+
+/* ============================================================
+   瓶边小伙伴的悄悄话（鼓励 / 安慰 / 表白）
+   ------------------------------------------------------------
+   每隔 11~20 秒随机说一句，说 5 秒后收起来
+   想改台词，直接改下面这个数组就行
+   ============================================================ */
+const BOY_LINES = [
+  "蹄花侠，今天也超棒的！✨",
+  "累了就歇一会儿，我陪着你 🌙",
+  "不管走多远，这里永远给你留着灯 🏠",
+  "你笑起来的样子，比整个地球都好看 💗",
+  "别怕，天塌下来我先替你顶着 ☂️",
+  "你走过的每个地方，我都替你记着 📍",
+  "今天也要开开心心的哦 🌈",
+  "你是我这辈子最想留住的人 💌",
+  "外面风大，记得多穿一件 🧣",
+  "心里难受的时候，就来看看这个地球 🌍",
+  "不管你飞多远，线一直在我手里 🎈",
+  "晚安要说给你听，早安也是 ⭐",
+  "你不用一个人扛，还有我呢 🤝",
+  "世界很大，可我只想站在你旁边 💫",
+  "今天也想你了，比昨天多一点 🥺",
+  "慢慢来，我们的时间还很长 ⏳"
+];
+
+let boyBubbleTimer = null;
+let boyBubbleLast = "";
+
+function boySayLine() {
+  const el = document.getElementById("boyBubble");
+  if (!el) return;
+  /* 不在主界面 / 页面在后台 / 彩蛋开着 就先不说 */
+  if (!appVisible || document.hidden) return;
+  const layer = document.getElementById("bottleShow");
+  if (layer && layer.classList.contains("show")) return;
+
+  let line = BOY_LINES[(Math.random() * BOY_LINES.length) | 0];
+  let guard = 0;
+  while (BOY_LINES.length > 1 && line === boyBubbleLast && guard++ < 8) {
+    line = BOY_LINES[(Math.random() * BOY_LINES.length) | 0];
+  }
+  boyBubbleLast = line;
+
+  el.textContent = line;
+  el.classList.add("show");
+  clearTimeout(boyBubbleTimer);
+  boyBubbleTimer = setTimeout(() => el.classList.remove("show"), 5200);
+}
+
+(function initBoyBubble() {
+  const tick = () => {
+    boySayLine();
+    setTimeout(tick, 11000 + Math.random() * 9000);
+  };
+  setTimeout(tick, 6000);   /* 进主界面约 6 秒后说第一句 */
+})();
 
 
 function initStarBottle() {
