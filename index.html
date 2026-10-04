@@ -878,8 +878,6 @@ localStorage['travelFootprints']
       box-shadow:
         0 10px 30px rgba(0,0,0,.2),
         0 0 25px rgba(255,215,0,.13);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
       font-size: 13px;
       font-weight: 700;
       text-shadow: 0 1px 6px rgba(0,0,0,.3);
@@ -904,8 +902,6 @@ localStorage['travelFootprints']
       color: #273331;
       background: rgba(255,255,255,.86);
       box-shadow: 0 10px 35px rgba(0,0,0,.18);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
       font-size: 14px;
       transition: box-shadow .2s ease, background .2s ease;
     }
@@ -927,8 +923,6 @@ localStorage['travelFootprints']
       color: white;
       background: rgba(30,45,46,.62);
       box-shadow: 0 10px 30px rgba(0,0,0,.2);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
       font-size: 22px;
       transition: transform .2s ease, background .2s ease;
     }
@@ -955,6 +949,22 @@ localStorage['travelFootprints']
       font-size: 18px;
     }
 
+    /* 云端同步状态小标签 */
+    .cloud-badge {
+      position: absolute;
+      z-index: 35;
+      right: 30px;
+      top: 92px;
+      padding: 6px 13px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      color: #eaf7ff;
+      background: rgba(24,40,58,.66);
+      border: 1px solid rgba(160,210,255,.45);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
     /* =========================================================
        通用面板 / 遮罩
        ========================================================= */
@@ -967,9 +977,7 @@ localStorage['travelFootprints']
       align-items: center;
       justify-content: center;
       padding: 20px;
-      background: rgba(8,16,18,.38);
-      backdrop-filter: blur(5px);
-      -webkit-backdrop-filter: blur(5px);
+      background: rgba(8,16,18,.58);
       opacity: 0;
       visibility: hidden;
       pointer-events: none;
@@ -991,8 +999,6 @@ localStorage['travelFootprints']
       color: #263635;
       background: rgba(255,255,255,.88);
       box-shadow: var(--shadow);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
       transform: scale(.9);
       transition: transform .3s ease-out;
     }
@@ -1325,8 +1331,6 @@ localStorage['travelFootprints']
       border-radius: 18px;
       background: rgba(25,38,39,.9);
       box-shadow: var(--shadow);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
       opacity: 0;
       visibility: hidden;
       transform: translateY(10px) scale(.96);
@@ -1399,8 +1403,6 @@ localStorage['travelFootprints']
       color: #293a37;
       background: rgba(255,255,255,.9);
       box-shadow: -15px 0 50px rgba(0,0,0,.2);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
       transform: translateX(100%);
       transition: transform .35s cubic-bezier(.22,.61,.36,1);
       overflow-y: auto;
@@ -1518,7 +1520,6 @@ localStorage['travelFootprints']
       color: white;
       background: rgba(28,40,39,.88);
       box-shadow: 0 10px 30px rgba(0,0,0,.2);
-      backdrop-filter: blur(6px);
       opacity: 0;
       visibility: hidden;
       text-align: center;
@@ -1559,8 +1560,6 @@ localStorage['travelFootprints']
       box-shadow:
         0 0 35px rgba(255,215,0,.15),
         inset 0 0 25px rgba(255,255,255,.06);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
       font-size: clamp(18px,3vw,27px);
       text-shadow: 0 2px 12px rgba(0,0,0,.5);
     }
@@ -2264,7 +2263,6 @@ localStorage['travelFootprints']
       position: fixed; inset: 0; z-index: 900;
       display: flex; align-items: center; justify-content: center; padding: 24px;
       background: rgba(8,14,26,.82);
-      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
       opacity: 0; visibility: hidden; pointer-events: none;
       transition: opacity .3s ease, visibility .3s ease;
       cursor: zoom-out;
@@ -2427,6 +2425,14 @@ localStorage['travelFootprints']
       50%     { filter: drop-shadow(0 0 18px rgba(255,214,120,.95)); transform: translateY(-3px); }
     }
 
+    /* 流畅模式 / 自动降档时：关掉最耗性能的毛玻璃和光斑 */
+    body.low-fx .bg-blobs { display: none; }
+    body.low-fx .background-layer { filter: none; }
+    body.low-fx * {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+
   </style>
 </head>
 
@@ -2545,6 +2551,10 @@ localStorage['travelFootprints']
     <div class="counter-badge" id="counterBadge">
       已记录 0 个足迹
     </div>
+
+
+    <!-- 云端同步状态（没开云端时自动隐藏） -->
+    <div class="cloud-badge" id="cloudBadge" style="display:none">☁️ 连接中…</div>
 
 
     <!-- 生日祝福 -->
@@ -3080,6 +3090,28 @@ const USE_DEMO_DATA = true;
 const DEBUG = false;
 
 
+/* ============================================================
+   云端同步（Supabase）—— 你俩共用同一份数据
+   ------------------------------------------------------------
+   把下面 4 个空填上就自动开启；保持空白 = 只在本地保存（和以前一样）
+     url      : Supabase → Settings → API → Project URL
+     anonKey  : Supabase → Settings → API → anon public
+     email    : 你俩共用的登录邮箱（在 Supabase 后台建的用户）
+     password : 那个用户的密码
+   ============================================================ */
+const CLOUD = {
+  url: "https://ffhpazxwzmnxqcnwtsey.supabase.co",
+  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmaHBhenh3em1ueHFjbnd0c2V5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEwOTU0MTAsImV4cCI6MjEwNjY3MTQxMH0.nuX3Fri6Dxu04X-rtMHVHkjKXThyYZkyPEH-BOY_QCs",
+  email: "761605002@qq.com",
+  password: "hzj071120",
+  table: "footprints",
+  bucket: "photos",
+  enabled: function () {
+    return !!(this.url && this.anonKey && this.email && this.password);
+  }
+};
+
+
 /* 卡通地球贴图（内嵌 base64，无需联网；想换回真实地球把 EARTH_TEXTURE_URL 改回 CONFIG.earthTexture 即可） */
 const CARTOON_EARTH =
   "data:image/webp;base64," +
@@ -3468,6 +3500,9 @@ function saveData() {
       JSON.stringify(footprints)
     );
 
+    /* 连上云端时，顺手把改动同步过去 */
+    if (cloudReady) cloudPush();
+
     return true;
 
   } catch (error) {
@@ -3489,6 +3524,274 @@ function saveData() {
 
     return false;
   }
+}
+
+
+/* ============================================================
+   云端同步实现（Supabase）—— 纯 fetch，不依赖任何外部库
+   ------------------------------------------------------------
+   · 打开页面 → 用共享账号登录 → 从云端读数据（你俩看到同一份）
+   · 在这边加/删/改 → 自动写回云端
+   · 每 15 秒对一次，对面改了这边会自动刷新
+   · 照片传到云存储，数据库里只存网址
+   ============================================================ */
+let cloudReady = false;        /* 是否已连上云端 */
+let cloudBusy = false;         /* 正在把本机数据推回云端 */
+let cloudReloadTimer = null;
+let sbToken = "";              /* 登录令牌 */
+let sbRefresh = "";            /* 刷新令牌 */
+let sbExpire = 0;              /* 令牌到期时间(ms) */
+
+function setCloudBadge(text, hide) {
+  const el = document.getElementById("cloudBadge");
+  if (!el) return;
+  if (text) el.textContent = text;
+  el.style.display = hide ? "none" : "";
+}
+
+/* ---------- 登录 ---------- */
+async function sbLogin() {
+  const res = await fetch(CLOUD.url + "/auth/v1/token?grant_type=password", {
+    method: "POST",
+    headers: { "apikey": CLOUD.anonKey, "Content-Type": "application/json" },
+    body: JSON.stringify({ email: CLOUD.email, password: CLOUD.password })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const m = data.error_description || data.msg || data.error || ("HTTP " + res.status);
+    throw new Error(String(m));
+  }
+  if (!data.access_token) throw new Error("没有拿到登录令牌");
+  sbToken = data.access_token;
+  sbRefresh = data.refresh_token || "";
+  sbExpire = Date.now() + ((Number(data.expires_in) || 3600) - 60) * 1000;
+}
+
+async function sbFreshToken() {
+  if (sbToken && Date.now() < sbExpire) return sbToken;
+  if (sbRefresh) {
+    try {
+      const res = await fetch(CLOUD.url + "/auth/v1/token?grant_type=refresh_token", {
+        method: "POST",
+        headers: { "apikey": CLOUD.anonKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: sbRefresh })
+      });
+      const d = await res.json().catch(() => ({}));
+      if (res.ok && d.access_token) {
+        sbToken = d.access_token;
+        sbRefresh = d.refresh_token || sbRefresh;
+        sbExpire = Date.now() + ((Number(d.expires_in) || 3600) - 60) * 1000;
+        return sbToken;
+      }
+    } catch (e) {}
+  }
+  await sbLogin();
+  return sbToken;
+}
+
+/* ---------- 数据库读写 ---------- */
+async function sbRest(path, options) {
+  const opt = options || {};
+  const tok = await sbFreshToken();
+  const headers = Object.assign({
+    "apikey": CLOUD.anonKey,
+    "Authorization": "Bearer " + tok,
+    "Content-Type": "application/json"
+  }, opt.headers || {});
+  const res = await fetch(CLOUD.url + "/rest/v1/" + path, Object.assign({}, opt, { headers: headers }));
+  const text = await res.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch (e) { data = text; }
+  if (!res.ok) {
+    const m = (data && (data.message || data.hint || data.error)) || ("HTTP " + res.status);
+    throw new Error(String(m));
+  }
+  return data;
+}
+
+function rowsToFootprints(rows) {
+  return (rows || [])
+    .slice()
+    .sort((a, b) => String(a.created_at || "").localeCompare(String(b.created_at || "")))
+    .map(r => ({
+      id: String(r.id),
+      name: safeText(r.name),
+      lat: Number(r.lat),
+      lng: Number(r.lng),
+      date: safeText(r.date),
+      photos: Array.isArray(r.photos) ? r.photos.filter(p => typeof p === "string") : [],
+      note: safeText(r.note)
+    }))
+    .filter(f => Number.isFinite(f.lat) && Number.isFinite(f.lng));
+}
+
+async function cloudFetchRows() {
+  return await sbRest(CLOUD.table + "?select=*");
+}
+
+function cacheLocal() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(footprints)); } catch (e) {}
+}
+
+/* 云端 → 本地 */
+async function cloudPull() {
+  if (!cloudReady) return false;
+  try {
+    footprints = rowsToFootprints(await cloudFetchRows());
+    cacheLocal();
+    setCloudBadge("☁️ 已同步");
+    return true;
+  } catch (error) {
+    console.warn("读取云端数据失败：", error);
+    setCloudBadge("⚠️ 读取失败");
+    return false;
+  }
+}
+
+/* 照片（base64）→ 云存储，换成网址 */
+async function cloudUploadPhotos() {
+  for (const f of footprints) {
+    const list = Array.isArray(f.photos) ? f.photos : [];
+    const out = [];
+    for (let i = 0; i < list.length; i++) {
+      const src = list[i];
+      if (typeof src !== "string" || !src) continue;
+      if (src.indexOf("data:") !== 0) { out.push(src); continue; }
+      try {
+        const blob = await (await fetch(src)).blob();
+        const ext = (String(blob.type).split("/")[1] || "jpg").replace("jpeg", "jpg");
+        const path = f.id + "/" + Date.now() + "_" + i + "." + ext;
+        const tok = await sbFreshToken();
+        const res = await fetch(CLOUD.url + "/storage/v1/object/" + CLOUD.bucket + "/" + path, {
+          method: "POST",
+          headers: {
+            "apikey": CLOUD.anonKey,
+            "Authorization": "Bearer " + tok,
+            "Content-Type": blob.type || "image/jpeg",
+            "x-upsert": "true"
+          },
+          body: blob
+        });
+        if (!res.ok) { out.push(src); continue; }
+        out.push(CLOUD.url + "/storage/v1/object/public/" + CLOUD.bucket + "/" + path);
+      } catch (error) {
+        out.push(src);
+      }
+    }
+    f.photos = out;
+  }
+}
+
+/* 本地 → 云端 */
+async function cloudPush() {
+  if (!cloudReady) return false;
+  cloudBusy = true;
+  setCloudBadge("☁️ 同步中…");
+  try {
+    await cloudUploadPhotos();
+    const rows = footprints.map(f => ({
+      id: f.id,
+      name: f.name,
+      lat: f.lat,
+      lng: f.lng,
+      date: f.date || "",
+      note: f.note || "",
+      photos: Array.isArray(f.photos) ? f.photos : [],
+      updated_at: new Date().toISOString()
+    }));
+    if (rows.length) {
+      await sbRest(CLOUD.table + "?on_conflict=id", {
+        method: "POST",
+        headers: { "Prefer": "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify(rows)
+      });
+    }
+    const cur = await sbRest(CLOUD.table + "?select=id");
+    const keep = new Set(rows.map(r => r.id));
+    const gone = (cur || []).map(r => String(r.id)).filter(id => !keep.has(id));
+    if (gone.length) {
+      await sbRest(CLOUD.table + "?id=in.(" + gone.map(encodeURIComponent).join(",") + ")", {
+        method: "DELETE",
+        headers: { "Prefer": "return=minimal" }
+      });
+    }
+    cacheLocal();
+    setCloudBadge("☁️ 已同步");
+    return true;
+  } catch (error) {
+    console.warn("同步到云端失败：", error);
+    setCloudBadge("⚠️ 同步失败");
+    showToast("云端同步失败：" + (error && error.message ? error.message : "") + " ⚠️", 4500);
+    return false;
+  } finally {
+    cloudBusy = false;
+  }
+}
+
+/* 定时对一下云端（对面改了这边自动刷新） */
+async function cloudPoll() {
+  if (!cloudReady || cloudBusy || document.hidden) return;
+  const before = JSON.stringify(footprints);
+  try {
+    const next = rowsToFootprints(await cloudFetchRows());
+    const after = JSON.stringify(next);
+    if (after !== before) {
+      footprints = next;
+      cacheLocal();
+      refreshAll();
+    }
+    setCloudBadge("☁️ 已同步");
+  } catch (error) {
+    console.warn("云端轮询失败：", error);
+    setCloudBadge("⚠️ 连接不稳");
+  }
+}
+
+/* 启动：登录 → 首次同步 → 开始轮询 */
+async function cloudBoot() {
+  if (!CLOUD.enabled()) { setCloudBadge("", true); return; }
+  setCloudBadge("☁️ 连接中…");
+  try {
+    await sbLogin();
+    cloudReady = true;
+  } catch (error) {
+    console.warn("云端登录失败：", error);
+    cloudReady = false;
+    const why = (error && error.message ? error.message : "未知原因");
+    setCloudBadge("📴 仅本机：" + String(why).slice(0, 28));
+    showToast("云端登录失败：" + why + " 📴", 6000);
+    return;
+  }
+
+  /* 首次同步：云端有数据就以云端为准；云端是空的就把本机数据传上去 */
+  const localList = footprints.slice();
+  let cloudList = null;
+  try {
+    cloudList = rowsToFootprints(await cloudFetchRows());
+  } catch (error) {
+    console.warn("首次读取云端失败：", error);
+    setCloudBadge("⚠️ 读取失败");
+    return;
+  }
+
+  if (cloudList.length) {
+    footprints = cloudList;
+    cacheLocal();
+    refreshAll();
+    setCloudBadge("☁️ 已同步");
+  } else if (localList.length) {
+    await cloudPush();
+  } else {
+    footprints = [];
+    cacheLocal();
+    setCloudBadge("☁️ 已同步");
+  }
+
+  clearInterval(cloudReloadTimer);
+  cloudReloadTimer = setInterval(cloudPoll, 15000);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) cloudPoll();
+  });
 }
 
 
@@ -3969,6 +4272,18 @@ try { qualityMode = localStorage.getItem("ttQuality") || "mid"; } catch (e) {}
 
 let qualityLevel = 0;
 
+/* 暖金辉光引用：每帧都要用，缓存起来避免反复遍历场景 */
+let goldenGlowRef = null;
+
+/* 帧率保护：低画质档 / 自动降档时，关掉最耗性能的视觉效果 */
+function applyFxLevel() {
+  const low =
+    qualityMode === "low" || qualityLevel >= 3;
+  if (document.body) {
+    document.body.classList.toggle("low-fx", low);
+  }
+}
+
 const QUALITY_RATIOS = [1.25, 1.0, .8, .65, .55];
 
 let fpsFrames = 0;
@@ -4024,12 +4339,16 @@ function updateFps(now) {
   fpsFrames = 0;
   fpsStamp = now;
 
-  if (fps < 45 && qualityLevel < QUALITY_RATIOS.length - 1) {
+  window.__ttFps = Math.round(fps * 10) / 10;   /* 想检查帧率：控制台输入 __ttFps */
+
+  if (fps < 52 && qualityLevel < QUALITY_RATIOS.length - 1) {
     qualityLevel++;
     resizeRenderer();
-  } else if (fps > 57 && qualityLevel > 0) {
+    applyFxLevel();
+  } else if (fps > 58 && qualityLevel > 0) {
     qualityLevel--;
     resizeRenderer();
+    applyFxLevel();
   }
 }
 
@@ -4880,6 +5199,10 @@ function initThree() {
 
   goldenGlow.name =
     "goldenGlow";
+
+
+  goldenGlowRef =
+    goldenGlow;
 
 
   earthGroup.add(
@@ -6311,6 +6634,9 @@ function updateRouteParticles(
   routeAnimationOffset +=
     delta * .045;
 
+  const tNow =
+    performance.now();
+
 
   routeParticles.forEach(
     particle => {
@@ -6344,7 +6670,7 @@ function updateRouteParticles(
         .65 +
         .35 *
         Math.sin(
-          performance.now() * .005 +
+          tNow * .005 +
           offset * 10
         );
 
@@ -7884,6 +8210,12 @@ function animate() {
     now;
 
 
+  /* 不在主界面 / 页面切到后台 → 这一帧什么都不做，省电又省性能 */
+  if (!appVisible || document.hidden) {
+    return;
+  }
+
+
   if (
     controls
   ) {
@@ -7939,61 +8271,65 @@ function animate() {
     markerGroup
   ) {
 
-    markerGroup.children.forEach(
-      (marker,index) => {
+    const markers =
+      markerGroup.children;
 
-        const pulse =
-          .5 +
-          .5 *
-          Math.sin(
-            now * .003 +
-            index * 1.37
+    for (
+      let i = 0;
+      i < markers.length;
+      i++
+    ) {
+
+      const pulse =
+        .5 +
+        .5 *
+        Math.sin(
+          now * .003 +
+          i * 1.37
+        );
+
+      const kids =
+        markers[i].children;
+
+      for (
+        let k = 0;
+        k < kids.length;
+        k++
+      ) {
+
+        const child =
+          kids[k];
+
+        if (
+          child.userData &&
+          child.userData.isMarkerGlow
+        ) {
+
+          child.scale.setScalar(
+            .85 +
+            pulse * .65
           );
 
+          child.material.opacity =
+            .12 +
+            pulse * .23;
+        } else if (
+          child.geometry &&
+          child.geometry.type ===
+          "RingGeometry"
+        ) {
 
-        marker.children.forEach(
-          child => {
+          child.scale.setScalar(
+            .92 +
+            pulse * .3
+          );
 
-            if (
-              child.userData &&
-              child.userData.isMarkerGlow
-            ) {
-
-              const scale =
-                .85 +
-                pulse * .65;
-
-              child.scale.setScalar(
-                scale
-              );
-
-              child.material.opacity =
-                .12 +
-                pulse * .23;
-            }
-
-            if (
-              child.geometry &&
-              child.geometry.type ===
-              "RingGeometry"
-            ) {
-
-              const scale =
-                .92 +
-                pulse * .3;
-
-              child.scale.setScalar(
-                scale
-              );
-
-              child.material.opacity =
-                .5 +
-                pulse * .35;
-            }
-          }
-        );
+          child.material.opacity =
+            .5 +
+            pulse * .35;
+        }
       }
-    );
+    }
   }
 
 
@@ -8004,9 +8340,7 @@ function animate() {
   ) {
 
     const glow =
-      earthGroup.getObjectByName(
-        "goldenGlow"
-      );
+      goldenGlowRef;
 
 
     if (
@@ -8139,6 +8473,10 @@ initThree();
 
 refreshAll();
 
+cloudBoot();
+
+applyFxLevel();
+
 window.__ttBooted = true;
 
 
@@ -8195,6 +8533,7 @@ document.addEventListener(
       try { localStorage.setItem("ttQuality", qualityMode); } catch (e) {}
       paint();
       if (typeof resizeRenderer === "function") resizeRenderer();
+      if (typeof applyFxLevel === "function") applyFxLevel();
       if (typeof showToast === "function") {
         showToast("画质已切换：" + btn.textContent);
       }
